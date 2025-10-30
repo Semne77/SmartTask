@@ -1,0 +1,266 @@
+@page "/upload-data"
+@inject HttpClient Http
+@using System.Text.Json
+@using System.Text.RegularExpressions;
+@using SmartTask.Client.Models;
+
+
+<PageTitle>Data Upload</PageTitle>
+
+
+<!-- 1️⃣ Select file -->
+<InputFile OnChange="OnFileSelected" />
+<!-- 2️⃣ Run the analysis manually -->
+<button @onclick="AnalyzeFile" disabled="@(_selectedFile == null)">Analyze PDF</button>
+<p>@status</p>
+
+
+@if (schedule.Count > 0)
+{
+    <h3>The server responded with:</h3>
+
+    <button class="btn btn-success mb-2" @onclick="AddRow">➕ Add New Class</button>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Start</th>
+                <th>Finish</th>
+                <th>Category</th>
+                <th>Class Name</th>
+                <th>Duration</th>
+                <th></th> <!-- remove button -->
+            </tr>
+        </thead>
+            <tbody>
+                @for (int i = 0; i < schedule.Count; i++)
+                {
+                    var item = schedule[i];
+                    var newI = i;
+                    Console.WriteLine(newI);
+
+                    <tr>
+                        <td><input value="@item.Date" @onchange="@(e => item.Date = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.TimeStart" @onchange="@(e => item.TimeStart = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.TimeFinish" @onchange="@(e => item.TimeFinish = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.ClassCategory" @onchange="@(e => item.ClassCategory = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.ClassName" @onchange="@(e => item.ClassName = e.Value?.ToString() ?? "")" /></td>
+                        <td><input type="number" step="0.25" value="@item.Duration"
+                                @onchange="@(e => item.Duration = double.TryParse(e.Value?.ToString(), out var d) ? d : 0)" /></td>
+                        <td>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn btn-sm btn-success" title="Add Above"
+                                        @onclick="() => AddRowAt(newI, above: true)">⬆️</button>
+                                <button class="btn btn-sm btn-success" title="Add Below"
+                                        @onclick="() => AddRowAt(newI, above: false)">⬇️</button>
+                                <button class="btn btn-sm btn-danger" title="Remove"
+                                        @onclick="() => RemoveRow(item)">❌</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+    </table>
+
+    <p><strong>Total Hours:</strong> @schedule.Sum(x => x.Duration)</p>
+}
+
+<button @onclick="StashData">Add to the 15 day plan</button>
+<button @onclick="ShowStached" disabled="@(!scheduleFull.Any())">Show Stashed schedule</button>
+
+
+@if (num==-1)
+{
+    <h3>The server responded with:</h3>
+
+    <button class="btn btn-success mb-2" @onclick="AddRow">➕ Add New Class</button>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Start</th>
+                <th>Finish</th>
+                <th>Category</th>
+                <th>Class Name</th>
+                <th>Duration</th>
+                <th></th> <!-- remove button -->
+            </tr>
+        </thead>
+            <tbody>
+                @for (int i = 0; i < scheduleFull.Count; i++)
+                {
+                    var item = scheduleFull[i];
+                    <tr>
+                        <td><input value="@item.Date" @onchange="@(e => item.Date = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.TimeStart" @onchange="@(e => item.TimeStart = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.TimeFinish" @onchange="@(e => item.TimeFinish = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.ClassCategory" @onchange="@(e => item.ClassCategory = e.Value?.ToString() ?? "")" /></td>
+                        <td><input value="@item.ClassName" @onchange="@(e => item.ClassName = e.Value?.ToString() ?? "")" /></td>
+                        <td><input type="number" step="0.25" value="@item.Duration"
+                                @onchange="@(e => item.Duration = double.TryParse(e.Value?.ToString(), out var d) ? d : 0)" /></td>
+                        <td>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn btn-sm btn-success" title="Add Above"
+                                        @onclick="() => AddRowAt(i, above: true)">⬆️</button>
+                                <button class="btn btn-sm btn-success" title="Add Below"
+                                        @onclick="() => AddRowAt(i, above: false)">⬇️</button>
+                                <button class="btn btn-sm btn-danger" title="Remove"
+                                        @onclick="() => RemoveRow(item)">❌</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+    </table>
+
+    <p><strong>Total Hours:</strong> @scheduleFull.Sum(x => x.Duration)</p>
+}
+
+
+@code{
+    private string status = "";
+
+    private string? data;
+    private List<ScheduleItem> schedule = new();
+
+    private List<ScheduleItem> scheduleFull = new();
+
+    private IBrowserFile? _selectedFile;
+
+    private int num = 1;
+
+    private void ShowStached(){
+        num = num*-1;
+    }
+    // Step 1️⃣: only remember which file was selected
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        status = $"📄 Selected file: {_selectedFile.Name}";
+    }
+
+    // Step 2️⃣: upload only when button is pressed
+    private async Task AnalyzeFile(){
+        if (_selectedFile == null)
+        {
+            status = "❌ Please select a file first.";
+            return;
+        }
+        using var content = new MultipartFormDataContent();
+        var streamContent = new StreamContent(_selectedFile.OpenReadStream(maxAllowedSize: 10_000_000));
+        content.Add(streamContent, "file", _selectedFile.Name);
+
+        status = "Analyzing ..";
+
+
+        var response = await Http.PostAsync("/api/pdf/analyze", content);
+        data = await response.Content.ReadAsStringAsync();
+        if (response.IsSuccessStatusCode){
+            status = "✅ Success! Got response from server.";
+
+            // Parse the JSON
+            var jsonDoc = JsonDocument.Parse(data);
+
+            // Navigate to output[0].content[0].text
+            var text = jsonDoc.RootElement
+                .GetProperty("output")[0]
+                .GetProperty("content")[0]
+                .GetProperty("text")
+                .GetString();
+
+            
+            schedule = ParseTable(text);
+            
+        }
+        else{
+            status = $"❌ Error: {(int)response.StatusCode} {response.ReasonPhrase}\nDetails: {data}";
+        }
+    }
+
+    private async Task StashData()
+    {
+        if (schedule.Count == 0)
+        {
+            status = "⚠️ Nothing to add!";
+            return;
+        }
+
+        // Create a new reference for re-render detection
+        scheduleFull = scheduleFull.Concat(schedule).ToList();
+        schedule.Clear();
+
+        status = "✅ Added to 15-day plan!";
+        await InvokeAsync(StateHasChanged); // ensures the button updates immediately
+    }
+
+    private List<ScheduleItem> ParseTable(string table)
+    {
+        var lines = table.Split('\n')
+            .Where(l => l.StartsWith("|") && !l.Contains("---"))
+            .Skip(1)
+            .ToList();
+
+        var list = new List<ScheduleItem>();
+
+        foreach (var line in lines)
+        {
+            var cols = line.Split('|', StringSplitOptions.TrimEntries)
+                           .Where(x => !string.IsNullOrWhiteSpace(x))
+                           .ToArray();
+
+            if (cols.Length >= 6)
+            {
+                list.Add(new ScheduleItem
+                {
+                    Date = cols[0],
+                    TimeStart = cols[1],
+                    TimeFinish = cols[2],
+                    ClassCategory = cols[3],
+                    ClassName = cols[4],
+                    Duration = double.TryParse(cols[5], out var d) ? d : 0
+                });
+            }
+        }
+        return list;
+    }
+
+    private void AddRow()
+    {
+        schedule.Add(new ScheduleItem
+        {
+            Date = DateTime.Now.ToString("MMMM dd"),
+            TimeStart = "00:00 AM",
+            TimeFinish = "00:00 AM",
+            ClassCategory = "",
+            ClassName = "",
+            Duration = 1
+        });
+    }
+
+    private void RemoveRow(ScheduleItem item)
+    {
+        schedule.Remove(item);
+    }
+
+    private void AddRowAt(int index, bool above)
+    {
+        Console.WriteLine(index);
+        var newItem = new ScheduleItem
+        {
+            Date = schedule[index].Date,
+            TimeStart = "",
+            TimeFinish = "",
+            ClassCategory = schedule[index].ClassCategory,
+            ClassName = "",
+            Duration = 1
+        };
+
+        if (above)
+            schedule.Insert(index, newItem);
+        else
+            schedule.Insert(index + 1, newItem);
+    }
+
+}

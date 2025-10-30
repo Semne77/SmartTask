@@ -1,0 +1,79 @@
+@page "/lifesycle-demo"
+
+<PageTitle>Lifecycle-demo</PageTitle>
+
+<p>Click this button and see what happends</p>
+
+<p>@log</p>
+
+<form>
+    <div>
+        <label for="email">enter email</label>
+        <input type="text" name="email" id="email" @bind="email">
+    </div>
+    <div>
+        <label for="DOB">Date of Birth</label>
+        <input type="text" name="DOB" id="DOB" @bind="dob">
+    </div>
+
+    <button type="button" @onclick="addUser">Add new user</button>
+
+</form>
+
+<table>
+    <thead>
+        <th>
+            <td>Email</td>
+        </th>
+        <th>
+            <td>Password</td>
+        </th>
+    </thead>
+    <tbody>
+        @foreach(User i in listUsers){
+            <tr>
+                <td>@i.email</td>
+                <td>@i.dob</td>
+            </tr>
+        }
+    
+    </tbody>
+
+</table>
+
+<button @onclick=ForceRerender>Click me</button>
+
+@code{
+    private string log = "";
+    private string email;
+
+    private string dob;
+
+    private List<User> listUsers = new();
+
+    
+    private void addUser(){
+        listUsers.Add(new User(email,dob));
+        Console.WriteLine("New User Created");
+    }
+    protected override void OnInitialized(){
+        log += "OnInitialized called \n";
+        Console.WriteLine("OnInitialized called");
+    }
+
+    private void ForceRerender(){
+        log += "🔁 Manual re-render triggered\n";
+        Console.WriteLine("🔁 Manual re-render triggered\n");
+        StateHasChanged();
+    }
+
+    class User{
+        public string email {get; set;}
+        public string dob {get; set;}
+        public User(string email,string dob){
+            this.dob = dob;
+            this.email = email;
+        }
+    }
+}
+

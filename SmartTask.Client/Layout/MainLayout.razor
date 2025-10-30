@@ -1,0 +1,24 @@
+﻿@inherits LayoutComponentBase
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">SmartTask.Client</div>
+    <nav class="nav">
+      <a href="/">Home</a>
+      <a href="/counter">Counter</a>
+      <a href="/weather">Weather</a>
+      <a href="/upload-data">Upload</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="appbar">
+      <h1 class="page-title">Hello, world!</h1>
+      <a class="about" href="/about">About</a>
+    </header>
+
+    <section class="content">
+      @Body
+    </section>
+  </div>
+</div>
