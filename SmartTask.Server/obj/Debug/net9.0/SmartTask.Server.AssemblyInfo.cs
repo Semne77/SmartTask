@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("81947a87-6d89-4f56-88d9-0898e0b0b5dc")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartTask.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4ffe576e659252aa152a2549ec0246be46c50312")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartTask.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartTask.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
